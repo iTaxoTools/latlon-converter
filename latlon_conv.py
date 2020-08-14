@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 import re
+import os
 import math
 import sys
 from typing import List, Tuple, Union, Iterator
+import tkinter as tk
+from tkinter import ttk
+import tkinter.filedialog
+import tkinter.messagebox
+import warnings
 
 # the parsers' input type
 Tokens = List[Tuple[int, str]]
@@ -226,7 +232,8 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
     lat_first = True
     # read the first line
     try:
-        heading = next(input).casefold()
+        line = next(input)
+        heading = line.casefold()
     except StopIteration:
         return
     # try to find 'lat' and 'lon' in the first line
@@ -239,9 +246,6 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
             line = next(input)
         except StopIteration:
             return
-    else:
-        # first line is not special
-        line = heading
     # yield the output heading
     both = "latlon" if lat_first else "lotlan"
     yield f"original_lat\toriginal_lon\toriginal_{both}\tlat_corr\tlon_corr\tlat_dec\tlon_dec\tlatlon_dec\tlat_sx\tlon_sx\tlatlon_sx"
@@ -260,6 +264,11 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
             lat, lon = parse_coordinates(line, lat_first)
         except ValueError:
             yield original + '\t' * 8
+            try:
+                line = next(input)
+            except StopIteration:
+                break
+            continue
         # compose the output
         lat_corr = str_coord(lat, True)
         lon_corr = str_coord(lon, False)
@@ -274,5 +283,159 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
             break
 
 
-for line in process_simpl(sys.stdin):
-    print(line)
+def launch_gui() -> None:
+    # initialization
+    root = tk.Tk()
+    mainframe = ttk.Frame(root, padding=5)
+    root.rowconfigure(0, weight=1)
+    root.columnconfigure(0, weight=1)
+    mainframe.rowconfigure(3, weight=1)
+    mainframe.columnconfigure(2, weight=1)
+
+    # create labels
+    infile_lbl = ttk.Label(mainframe, text="Input file")
+    outfile_lbl = ttk.Label(mainframe, text="Output file")
+
+    # create entries
+    infile_var = tk.StringVar()
+    infile_entr = ttk.Entry(mainframe, textvariable=infile_var)
+    outfile_var = tk.StringVar()
+    outfile_entr = ttk.Entry(mainframe, textvariable=outfile_var)
+
+    # create texts
+    input_frame = ttk.Frame(mainframe)
+    input_frame.rowconfigure(1, weight=1)
+    input_frame.columnconfigure(0, weight=1)
+    input_text = tk.Text(input_frame, width=50, height=20)
+    input_lbl = ttk.Label(input_frame, text="Input")
+    input_xscroll = ttk.Scrollbar(
+        input_frame, orient=tk.HORIZONTAL, command=input_text.xview)
+    input_yscroll = ttk.Scrollbar(
+        input_frame, orient=tk.VERTICAL, command=input_text.yview)
+    input_text.configure(xscrollcommand=input_xscroll.set,
+                         yscrollcommand=input_yscroll.set)
+    input_lbl.grid(row=0, column=0, sticky='w')
+    input_text.grid(row=1, column=0, sticky='nsew')
+    input_xscroll.grid(row=2, column=0, sticky='nsew')
+    input_yscroll.grid(row=1, column=1, sticky='nsew')
+
+    output_frame = ttk.Frame(mainframe)
+    output_frame.rowconfigure(1, weight=1)
+    output_frame.columnconfigure(0, weight=1)
+    output_text = tk.Text(output_frame, width=50, height=20, wrap='none')
+    output_lbl = ttk.Label(output_frame, text="Output")
+    output_xscroll = ttk.Scrollbar(
+        output_frame, orient=tk.HORIZONTAL, command=output_text.xview)
+    output_yscroll = ttk.Scrollbar(
+        output_frame, orient=tk.VERTICAL, command=output_text.yview)
+    output_text.configure(xscrollcommand=output_xscroll.set,
+                          yscrollcommand=output_yscroll.set)
+    output_lbl.grid(row=0, column=0, sticky='w')
+    output_text.grid(row=1, column=0, sticky='nsew')
+    output_xscroll.grid(row=2, column=0, sticky='nsew')
+    output_yscroll.grid(row=1, column=1, sticky='nsew')
+
+    # internal functions
+    def input_lines() -> Iterator[str]:
+        """
+        returns an iterator over the input lines
+
+        if the input file name is given, the line comes from it,
+        otherwise from the input text widget
+        """
+        filename = infile_var.get()
+        if filename and not filename.isspace():
+            with open(filename) as file:
+                for line in file:
+                    yield line
+        else:
+            text = input_text.get('1.0', 'end')
+            for line in text.splitlines():
+                yield line
+
+    def write_output(lines: Iterator[str]) -> None:
+        """
+        writes the output
+
+        if the output file name is given, the output is written to it,
+        otherwise to the output text widget
+        """
+        filename = outfile_var.get()
+        output_text.delete('1.0', 'end')
+        if filename and not filename.isspace():
+            with open(filename, mode='w') as file:
+                for line in lines:
+                    print(line, file=file)
+        else:
+            for line in lines:
+                output_text.insert('end', line)
+                output_text.insert('end', '\n')
+
+    def browse_infile() -> None:
+        infile_var.set(os.path.relpath(tk.filedialog.askopenfilename()))
+
+    def browse_outfile() -> None:
+        outfile_var.set(os.path.relpath(tk.filedialog.asksaveasfilename()))
+
+    def process() -> None:
+        """
+        command for the Process button
+        """
+        try:
+            # catch all warnings
+            with warnings.catch_warnings(record=True) as warns:
+                write_output(process_simpl(input_lines()))
+                # display the warnings generated during the conversion
+                for w in warns:
+                    tkinter.messagebox.showwarning("Warning", str(w.message))
+            # notify the user that the converions is finished
+            tkinter.messagebox.showinfo(
+                "Done.", "The processing has been completed")
+        # show the ValueErrors and FileNotFoundErrors
+        except ValueError as ex:
+            tkinter.messagebox.showerror("Error", str(ex))
+        except FileNotFoundError as ex:
+            tkinter.messagebox.showerror("Error", str(ex))
+
+    def load() -> None:
+        """
+        loads the text from the input file into the input text widget
+        """
+        filename = infile_var.get()
+        input_text.delete('1.0', 'end')
+        if filename and not filename.isspace():
+            with open(filename) as file:
+                for line in file:
+                    input_text.insert('end', line)
+
+    # create buttons
+    infile_btn = ttk.Button(mainframe, text="Browse", command=browse_infile)
+    outfile_btn = ttk.Button(mainframe, text="Browse", command=browse_outfile)
+    load_btn = ttk.Button(mainframe, text="Load", command=load)
+    process_btn = ttk.Button(mainframe, text="Process", command=process)
+
+    # display the widgets
+    infile_lbl.grid(row=0, column=0, sticky='w')
+    infile_entr.grid(row=1, column=0, sticky='we')
+    infile_btn.grid(row=1, column=1, sticky='w')
+
+    outfile_lbl.grid(row=0, column=3, sticky='w')
+    outfile_entr.grid(row=1, column=3, sticky='we')
+    outfile_btn.grid(row=1, column=4, sticky='w')
+
+    load_btn.grid(row=2, column=0)
+    process_btn.grid(row=2, column=2)
+
+    input_frame.grid(row=3, column=0, columnspan=2)
+    output_frame.grid(row=3, column=3, columnspan=2)
+
+    mainframe.grid(row=0, column=0, sticky='nsew')
+
+    root.mainloop()
+
+
+if '--cmd' in sys.argv:
+    for line in process_simpl(sys.stdin):
+        print(line)
+else:
+    launch_gui()
