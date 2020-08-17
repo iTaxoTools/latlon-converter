@@ -54,11 +54,19 @@ def str_coord(coord: Coordinate, lat: bool) -> str:
     else:
         hems = ['W', 'E']
     if isinstance(coord, float):
-        return f"{abs(coord)}°{hems[coord >= 0]}"
+        return f"{abs(coord):.5f}{hems[coord >= 0]}"
     elif isinstance(coord[2], float):
-        return f"{coord[1]}°{coord[2]}'{hems[coord[0]]}"
+        return f"{coord[1]}°{coord[2]:.3f}'{hems[coord[0]]}"
     else:
-        return f"{coord[1]}°{coord[2][0]}'{coord[2][1]}''{hems[coord[0]]}"
+        return f"{coord[1]}°{coord[2][0]}'{coord[2][1]:.1f}''{hems[coord[0]]}"
+
+
+def signed_coord(coord: str) -> str:
+    hem = coord[-1]
+    if coord in 'SW':
+        return '-' + coord[:-1]
+    else:
+        return coord[:-1]
 
 
 def prepare_string(string: str) -> str:
@@ -227,7 +235,7 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
         return orient((coord0, coord1))
 
 
-def process_simpl(input: Iterator[str]) -> Iterator[str]:
+def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     # by default latitude comes first
     lat_first = True
     # read the first line
@@ -248,22 +256,22 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
             return
     # yield the output heading
     both = "latlon" if lat_first else "lotlan"
-    yield f"original_lat\toriginal_lon\toriginal_{both}\tlat_corr\tlon_corr\tlat_dec\tlon_dec\tlatlon_dec\tlat_sx\tlon_sx\tlatlon_sx"
+    yield ["original_lat", "original_lon", f"original_{both}", "lat_corr", "lon_corr", "lat_dec", "lon_dec", "latlon_dec", "lat_sx", "lon_sx", "latlon_sx", "Remark"]
     while True:
         # format the part of the output with the original information
         line = line.strip()
         part1, sep, part2 = line.partition('\t')
         if not part1 or not part2 or part1.isspace() or part2.isspace():
-            original = f"\t\t{line}"
+            original = ["", "", line]
         elif lat_first:
-            original = f"{part1}\t{part2}\t"
+            original = [part1, part2, ""]
         else:
-            original = f"{part2}\t{part1}\t"
+            original = [part2, part1, ""]
         # try to parse the line, if it fails, output just the original
         try:
             lat, lon = parse_coordinates(line, lat_first)
         except ValueError:
-            yield original + '\t' * 8
+            yield original + [""] * 8 + ["Format of input coordinates not recognized"]
             try:
                 line = next(input)
             except StopIteration:
@@ -276,7 +284,7 @@ def process_simpl(input: Iterator[str]) -> Iterator[str]:
         lon_dec = str_coord(dec_coord(lon), False)
         lat_sx = str_coord(sx_coord(lat), True)
         lon_sx = str_coord(sx_coord(lon), False)
-        yield f"{original}\t{lat_corr}\t{lon_corr}\t{lat_dec}\t{lon_dec}\t{lat_dec} {lon_dec}\t{lat_sx}\t{lon_sx}\t{lat_sx} {lon_sx}"
+        yield original + [lat_corr, lon_corr, signed_coord(lat_dec), signed_coord(lon_dec), f"{lat_dec} {lon_dec}", lat_sx, lon_sx, f"{lat_sx} {lon_sx}", ""]
         try:
             line = next(input)
         except StopIteration:
@@ -353,7 +361,7 @@ def launch_gui() -> None:
             for line in text.splitlines():
                 yield line
 
-    def write_output(lines: Iterator[str]) -> None:
+    def write_output(lines: Iterator[List[str]]) -> None:
         """
         writes the output
 
@@ -365,10 +373,10 @@ def launch_gui() -> None:
         if filename and not filename.isspace():
             with open(filename, mode='w') as file:
                 for line in lines:
-                    print(line, file=file)
+                    print("\t".join(line), file=file)
         else:
             for line in lines:
-                output_text.insert('end', line)
+                output_text.insert('end', f"{line[5]}\t{line[6]}")
                 output_text.insert('end', '\n')
 
     def browse_infile() -> None:
@@ -436,6 +444,6 @@ def launch_gui() -> None:
 
 if '--cmd' in sys.argv:
     for line in process_simpl(sys.stdin):
-        print(line)
+        print('\t'.join(line))
 else:
     launch_gui()
