@@ -63,7 +63,7 @@ def str_coord(coord: Coordinate, lat: bool) -> str:
 
 def signed_coord(coord: str) -> str:
     hem = coord[-1]
-    if coord in 'SW':
+    if hem in 'SW':
         return '-' + coord[:-1]
     else:
         return coord[:-1]
@@ -181,7 +181,7 @@ def parse_seconds(tokens: Tokens) -> Tuple[float, Tokens]:
 
 
 def hemisphere_sign(c: str, coord: Coordinate) -> Coordinate:
-    if c in 'NE':
+    if c in 'ne':
         return coord
     else:
         if isinstance(coord, float):
@@ -201,7 +201,7 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     # sanitize the string
     string = prepare_string(string)
     # extract the quadrant information
-    quadrant = [c for c in string if c in 'NSEW']
+    quadrant = [c for c in string if c in 'nsew']
     # defines method orient that exchanges and negates the coordinates based on the quadrant
     if not quadrant:
         if lat_first:
@@ -213,10 +213,10 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
                        ) -> Tuple[Coordinate, Coordinate]:
                 return (p[1], p[0])
     elif len(quadrant) == 2:
-        if quadrant[0] in 'NS' and quadrant[1] in 'WE':
+        if quadrant[0] in 'ns' and quadrant[1] in 'we':
             def swap(p: Tuple[Coordinate, Coordinate]) -> Tuple[Coordinate, Coordinate]:
                 return p
-        elif quadrant[0] in 'WE' and quadrant[1] in 'NS':
+        elif quadrant[0] in 'we' and quadrant[1] in 'ns':
             def swap(p: Tuple[Coordinate, Coordinate]) -> Tuple[Coordinate, Coordinate]:
                 return (p[1], p[0])
 
