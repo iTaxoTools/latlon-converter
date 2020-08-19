@@ -201,7 +201,11 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     # sanitize the string
     string = prepare_string(string)
     # extract the quadrant information
-    quadrant = [c for c in string if c in 'nsew']
+    letters = [c for c in string if c.isalpha()]
+    quadrant = [c for c in letters if c in 'nsew']
+    if len(letters) > len(quadrant):
+        # there are disallowed letters in coordinates
+        raise ValueError
     # defines method orient that exchanges and negates the coordinates based on the quadrant
     if not quadrant:
         if lat_first:
@@ -376,7 +380,7 @@ def launch_gui() -> None:
                     print("\t".join(line), file=file)
         else:
             for line in lines:
-                output_text.insert('end', f"{line[5]}\t{line[6]}")
+                output_text.insert('end', f"{line[5]}\t{line[6]}\t{line[-1]}")
                 output_text.insert('end', '\n')
 
     def browse_infile() -> None:
