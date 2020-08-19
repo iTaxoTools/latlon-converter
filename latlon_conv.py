@@ -95,7 +95,7 @@ def parse_coord(tokens: Tokens) -> Tuple[Coordinate, Tokens]:
     if not tokens:
         raise ValueError("parse error")
     elif len(tokens) == 1:
-        return tokens[0][0], tokens[1:]
+        return float(tokens[0][0]), tokens[1:]
 
     first_sep = tokens[0][1]
     if first_sep[0] in '.,':
@@ -138,7 +138,7 @@ def parse_minutes(tokens: Tokens) -> Tuple[Minute, Tokens]:
     if not tokens:
         raise ValueError("parse error")
     elif len(tokens) == 1:
-        return tokens[0][0], tokens[1:]
+        return float(tokens[0][0]), tokens[1:]
 
     first_sep = tokens[0][1]
     if first_sep[0] in '.,':
@@ -167,7 +167,7 @@ def parse_seconds(tokens: Tokens) -> Tuple[float, Tokens]:
     if not tokens:
         raise ValueError("parse error")
     elif len(tokens) == 1:
-        return tokens[0][0], tokens[1:]
+        return float(tokens[0][0]), tokens[1:]
 
     first_sep = tokens[0][1]
     if first_sep[0] in '.,':
