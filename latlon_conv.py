@@ -384,10 +384,20 @@ def launch_gui() -> None:
                 output_text.insert('end', '\n')
 
     def browse_infile() -> None:
-        infile_var.set(os.path.relpath(tk.filedialog.askopenfilename()))
+        if (newpath := tk.filedialog.askopenfilename()):
+            try:
+                newpath = os.path.relpath(newpath)
+            except:
+                newpath = os.path.abspath(newpath)
+            infile_var.set(newpath)
 
     def browse_outfile() -> None:
-        outfile_var.set(os.path.relpath(tk.filedialog.asksaveasfilename()))
+        if (newpath := tk.filedialog.asksaveasfilename()):
+            try:
+                newpath = os.path.relpath(newpath)
+            except:
+                newpath = os.path.abspath(newpath)
+            outfile_var.set(newpath)
 
     def process() -> None:
         """
