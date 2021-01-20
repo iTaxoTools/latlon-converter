@@ -191,6 +191,12 @@ def hemisphere_sign(c: str, coord: Coordinate) -> Coordinate:
         else:
             return (not coord[0], coord[1], coord[2])
 
+def cannot_parse_error(tokens: Tokens) -> ValueError:
+    """
+    makes a ValueError
+    "Cannot parse: tokens as str"
+    """
+    return ValueError("Cannot parse: " + ''.join(str(n)+sep for n, sep in tokens))
 
 def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordinate]:
     """
@@ -207,7 +213,9 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     quadrant = [c for c in letters if c in 'nsew']
     if len(letters) > len(quadrant):
         # there are disallowed letters in coordinates
-        raise ValueError
+        if 'o' in letters:
+            raise ValueError("Encountered 'O' to indicate geographical direction which can mean either West (Spanish/French/Italian) or East (German); please change to E or W before conversion.")
+        raise ValueError("Letters {set(letters) - set(quadrant)} cannot be regognized as hemispheres")
     # defines method orient that exchanges and negates the coordinates based on the quadrant
     if not quadrant:
         if lat_first:
@@ -234,11 +242,17 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     tokens = [(int(m.group(1)), m.group(2))
               for m in re.finditer(r'(-?\d+)([^\d-]*)', string)]
     # parse coordinates one after the other
-    coord0, tokens1 = parse_coord(tokens)
-    coord1, rest = parse_coord(tokens1)
+    try:
+        coord0, tokens1 = parse_coord(tokens)
+    except ValueError as ex:
+        raise cannot_parse_error(tokens) from ex
+    try:
+        coord1, rest = parse_coord(tokens1)
+    except ValueError as ex:
+        raise cannot_parse_error(tokens1) from ex
     if rest:
         # incomplete parse: error
-        raise ValueError(''.join(str(n)+sep for n, sep in rest))
+        raise cannot_parse_error(rest)
     else:
         return orient((coord0, coord1))
 
@@ -278,8 +292,8 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
         # try to parse the line, if it fails, output just the original
         try:
             lat, lon = parse_coordinates(line, lat_first)
-        except ValueError:
-            yield original + [""] * 8 + ["Format of input coordinates not recognized"]
+        except ValueError as ex:
+            yield original + [""] * 8 + [str(ex)]
             try:
                 line = next(input)
             except StopIteration:
