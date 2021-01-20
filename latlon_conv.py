@@ -3,10 +3,10 @@ import re
 import os
 import math
 import sys
-from typing import List, Tuple, Union, Iterator
+from typing import List, Tuple, Union, Iterator, Optional
 import tkinter as tk
 from tkinter import ttk
-import tkinter.filedialog
+import tkinter.filedialog as tkfiledialog
 import tkinter.messagebox
 import warnings
 
@@ -55,10 +55,12 @@ def str_coord(coord: Coordinate, lat: bool) -> str:
         hems = ['W', 'E']
     if isinstance(coord, float):
         return f"{abs(coord):.5f}{hems[coord >= 0]}"
-    elif isinstance(coord[2], float):
-        return f"{coord[1]}°{coord[2]:.3f}'{hems[coord[0]]}"
     else:
-        return f"{coord[1]}°{coord[2][0]}'{coord[2][1]:.1f}''{hems[coord[0]]}"
+        sign,degrees, minutes = coord
+        if isinstance(minutes, float):
+            return f"{degrees}°{minutes:.3f}'{hems[sign]}"
+        else:
+            return f"{degrees}°{minutes[0]}'{minutes[1]:.1f}''{hems[sign]}"
 
 
 def signed_coord(coord: str) -> str:
@@ -226,6 +228,8 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
 
         def orient(p: Tuple[Coordinate, Coordinate]) -> Tuple[Coordinate, Coordinate]:
             return swap((hemisphere_sign(quadrant[0], p[0]), hemisphere_sign(quadrant[1], p[1])))
+    else:
+        raise ValueError(f"Cannot recognize the order of coordinates: {string}")
     # split the string into tokens
     tokens = [(int(m.group(1)), m.group(2))
               for m in re.finditer(r'(-?\d+)([^\d-]*)', string)]
@@ -240,7 +244,7 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
 
 
 def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
-    # by default latitude comes first
+    # by default latitude comes first)
     lat_first = True
     # read the first line
     try:
@@ -264,7 +268,7 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     while True:
         # format the part of the output with the original information
         line = line.strip()
-        part1, sep, part2 = line.partition('\t')
+        part1, _, part2 = line.partition('\t')
         if not part1 or not part2 or part1.isspace() or part2.isspace():
             original = ["", "", line]
         elif lat_first:
@@ -384,7 +388,8 @@ def launch_gui() -> None:
                 output_text.insert('end', '\n')
 
     def browse_infile() -> None:
-        if (newpath := tk.filedialog.askopenfilename()):
+        newpath: Optional[str] = tkfiledialog.askopenfilename()
+        if (newpath):
             try:
                 newpath = os.path.relpath(newpath)
             except:
@@ -392,7 +397,8 @@ def launch_gui() -> None:
             infile_var.set(newpath)
 
     def browse_outfile() -> None:
-        if (newpath := tk.filedialog.asksaveasfilename()):
+        newpath: Optional[str] = tkfiledialog.asksaveasfilename()
+        if (newpath):
             try:
                 newpath = os.path.relpath(newpath)
             except:
