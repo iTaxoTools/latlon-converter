@@ -74,7 +74,11 @@ def signed_coord(coord: str) -> str:
 def prepare_string(string: str) -> str:
     """
     standardizes the string
+
+    raises ValueError if both 'O' or 'o' and '°' are present in the string
     """
+    if ('O' in string or 'o' in string) and '°' in string:
+        raise ValueError("Encountered 'O' to indicate geographical direction which can mean either West (Spanish/French/Italian) or East (German); please change to E or W before conversion.")
     string = string.casefold()
     string = re.sub('north', 'n', string)
     string = re.sub('south', 's', string)
@@ -213,8 +217,6 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     quadrant = [c for c in letters if c in 'nsew']
     if len(letters) > len(quadrant):
         # there are disallowed letters in coordinates
-        if 'o' in letters:
-            raise ValueError("Encountered 'O' to indicate geographical direction which can mean either West (Spanish/French/Italian) or East (German); please change to E or W before conversion.")
         raise ValueError("Letters {set(letters) - set(quadrant)} cannot be regognized as hemispheres")
     # defines method orient that exchanges and negates the coordinates based on the quadrant
     if not quadrant:
@@ -246,6 +248,8 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
         coord0, tokens1 = parse_coord(tokens)
     except ValueError as ex:
         raise cannot_parse_error(tokens) from ex
+    if not tokens1 and len(tokens) == 2: # probably the degrees, degrees situation
+        return orient((float(tokens[0][0]), float(tokens[1][0])))
     try:
         coord1, rest = parse_coord(tokens1)
     except ValueError as ex:
