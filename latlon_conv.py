@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.filedialog as tkfiledialog
 import tkinter.messagebox
+import tkinter.font as tkfont
 import warnings
 
 # the parsers' input type
@@ -320,11 +321,32 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
 def launch_gui() -> None:
     # initialization
     root = tk.Tk()
+    root.title("LatLonConverter")
+    if os.name == "nt":
+        root.wm_iconbitmap(os.path.join('data', 'LatLonIcon.ico'))
     mainframe = ttk.Frame(root, padding=5)
-    root.rowconfigure(0, weight=1)
+    root.rowconfigure(1, weight=1)
     root.columnconfigure(0, weight=1)
-    mainframe.rowconfigure(3, weight=1)
+    mainframe.rowconfigure(4, weight=1)
     mainframe.columnconfigure(2, weight=1)
+
+    style = ttk.Style()
+    style.configure("ConvertButton.TButton", background="blue")
+
+    # banner frame
+    banner_frame = ttk.Frame(root)
+    banner_img = tk.PhotoImage(file=os.path.join(
+        "data", "iTaxoTools Digital linneaeus MICROLOGO.png"))
+    banner_image = ttk.Label(banner_frame, image=banner_img)
+    banner_image.grid(row=0, column=0, rowspan=2, sticky='nsw')
+    program_name = ttk.Label(
+        banner_frame, text="LatLonConverter", font=tkfont.Font(size=20))
+    program_name.grid(row=1, column=1, sticky='sw')
+    program_description = ttk.Label(
+        banner_frame, text="A batch converter of geographical coordinates")
+    program_description.grid(row=1, column=2, sticky='sw', ipady=4, ipadx=15)
+    banner_frame.grid(column=0, row=0, sticky='nsw')
+
 
     # create labels
     infile_lbl = ttk.Label(mainframe, text="Input file")
@@ -340,8 +362,8 @@ def launch_gui() -> None:
     input_frame = ttk.Frame(mainframe)
     input_frame.rowconfigure(1, weight=1)
     input_frame.columnconfigure(0, weight=1)
-    input_text = tk.Text(input_frame, width=50, height=20)
-    input_lbl = ttk.Label(input_frame, text="Input")
+    input_text = tk.Text(input_frame, width=50, height=15)
+    input_lbl = ttk.Label(input_frame, text="Paste coordinates here for fast conversion into decimal format\n(one pair of coordinates per line, in any format)")
     input_xscroll = ttk.Scrollbar(
         input_frame, orient=tk.HORIZONTAL, command=input_text.xview)
     input_yscroll = ttk.Scrollbar(
@@ -356,8 +378,8 @@ def launch_gui() -> None:
     output_frame = ttk.Frame(mainframe)
     output_frame.rowconfigure(1, weight=1)
     output_frame.columnconfigure(0, weight=1)
-    output_text = tk.Text(output_frame, width=50, height=20, wrap='none')
-    output_lbl = ttk.Label(output_frame, text="Output")
+    output_text = tk.Text(output_frame, width=50, height=15, wrap='none')
+    output_lbl = ttk.Label(output_frame, text="If the data have been pasted into the window on the left,\nthe converted output will be show here.")
     output_xscroll = ttk.Scrollbar(
         output_frame, orient=tk.HORIZONTAL, command=output_text.xview)
     output_yscroll = ttk.Scrollbar(
@@ -458,7 +480,7 @@ def launch_gui() -> None:
     infile_btn = ttk.Button(mainframe, text="Browse", command=browse_infile)
     outfile_btn = ttk.Button(mainframe, text="Browse", command=browse_outfile)
     load_btn = ttk.Button(mainframe, text="Load", command=load)
-    process_btn = ttk.Button(mainframe, text="Process", command=process)
+    process_btn = ttk.Button(mainframe, text="Convert", command=process, style="ConvertButton.TButton")
 
     # display the widgets
     infile_lbl.grid(row=0, column=0, sticky='w')
@@ -472,10 +494,14 @@ def launch_gui() -> None:
     load_btn.grid(row=2, column=0)
     process_btn.grid(row=2, column=2)
 
-    input_frame.grid(row=3, column=0, columnspan=2)
-    output_frame.grid(row=3, column=3, columnspan=2)
+    ttk.Separator(mainframe, orient='horizontal').grid(row=3, column=0, columnspan=5, sticky='nsew', pady=20)
 
-    mainframe.grid(row=0, column=0, sticky='nsew')
+    input_frame.grid(row=4, column=0, columnspan=2)
+    output_frame.grid(row=4, column=3, columnspan=2)
+
+    ttk.Separator(root, orient='horizontal').grid(row=1, column=0, sticky='nsew')
+
+    mainframe.grid(row=2, column=0, sticky='nsew')
 
     root.mainloop()
 
