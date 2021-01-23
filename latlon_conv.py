@@ -3,10 +3,10 @@ import re
 import os
 import math
 import sys
-from typing import List, Tuple, Union, Iterator
+from typing import List, Tuple, Union, Iterator, Optional
 import tkinter as tk
 from tkinter import ttk
-import tkinter.filedialog
+import tkinter.filedialog as tkfiledialog
 import tkinter.messagebox
 import warnings
 
@@ -55,10 +55,12 @@ def str_coord(coord: Coordinate, lat: bool) -> str:
         hems = ['W', 'E']
     if isinstance(coord, float):
         return f"{abs(coord):.5f}{hems[coord >= 0]}"
-    elif isinstance(coord[2], float):
-        return f"{coord[1]}°{coord[2]:.3f}'{hems[coord[0]]}"
     else:
-        return f"{coord[1]}°{coord[2][0]}'{coord[2][1]:.1f}''{hems[coord[0]]}"
+        sign,degrees, minutes = coord
+        if isinstance(minutes, float):
+            return f"{degrees}°{minutes:.3f}'{hems[sign]}"
+        else:
+            return f"{degrees}°{minutes[0]}'{minutes[1]:.1f}''{hems[sign]}"
 
 
 def signed_coord(coord: str) -> str:
@@ -72,7 +74,11 @@ def signed_coord(coord: str) -> str:
 def prepare_string(string: str) -> str:
     """
     standardizes the string
+
+    raises ValueError if both 'O' or 'o' and '°' are present in the string
     """
+    if ('O' in string or 'o' in string) and '°' in string:
+        raise ValueError("Encountered 'O' to indicate geographical direction which can mean either West (Spanish/French/Italian) or East (German); please change to E or W before conversion.")
     string = string.casefold()
     string = re.sub('north', 'n', string)
     string = re.sub('south', 's', string)
@@ -189,6 +195,12 @@ def hemisphere_sign(c: str, coord: Coordinate) -> Coordinate:
         else:
             return (not coord[0], coord[1], coord[2])
 
+def cannot_parse_error(tokens: Tokens) -> ValueError:
+    """
+    makes a ValueError
+    "Cannot parse: tokens as str"
+    """
+    return ValueError("Cannot parse: " + ''.join(str(n)+sep for n, sep in tokens))
 
 def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordinate]:
     """
@@ -205,7 +217,7 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     quadrant = [c for c in letters if c in 'nsew']
     if len(letters) > len(quadrant):
         # there are disallowed letters in coordinates
-        raise ValueError
+        raise ValueError("Letters {set(letters) - set(quadrant)} cannot be regognized as hemispheres")
     # defines method orient that exchanges and negates the coordinates based on the quadrant
     if not quadrant:
         if lat_first:
@@ -226,21 +238,31 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
 
         def orient(p: Tuple[Coordinate, Coordinate]) -> Tuple[Coordinate, Coordinate]:
             return swap((hemisphere_sign(quadrant[0], p[0]), hemisphere_sign(quadrant[1], p[1])))
+    else:
+        raise ValueError(f"Cannot recognize the order of coordinates: {string}")
     # split the string into tokens
     tokens = [(int(m.group(1)), m.group(2))
               for m in re.finditer(r'(-?\d+)([^\d-]*)', string)]
     # parse coordinates one after the other
-    coord0, tokens1 = parse_coord(tokens)
-    coord1, rest = parse_coord(tokens1)
+    try:
+        coord0, tokens1 = parse_coord(tokens)
+    except ValueError as ex:
+        raise cannot_parse_error(tokens) from ex
+    if not tokens1 and len(tokens) == 2: # probably the degrees, degrees situation
+        return orient((float(tokens[0][0]), float(tokens[1][0])))
+    try:
+        coord1, rest = parse_coord(tokens1)
+    except ValueError as ex:
+        raise cannot_parse_error(tokens1) from ex
     if rest:
         # incomplete parse: error
-        raise ValueError(''.join(str(n)+sep for n, sep in rest))
+        raise cannot_parse_error(rest)
     else:
         return orient((coord0, coord1))
 
 
 def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
-    # by default latitude comes first
+    # by default latitude comes first)
     lat_first = True
     # read the first line
     try:
@@ -264,7 +286,7 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     while True:
         # format the part of the output with the original information
         line = line.strip()
-        part1, sep, part2 = line.partition('\t')
+        part1, _, part2 = line.partition('\t')
         if not part1 or not part2 or part1.isspace() or part2.isspace():
             original = ["", "", line]
         elif lat_first:
@@ -274,8 +296,8 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
         # try to parse the line, if it fails, output just the original
         try:
             lat, lon = parse_coordinates(line, lat_first)
-        except ValueError:
-            yield original + [""] * 8 + ["Format of input coordinates not recognized"]
+        except ValueError as ex:
+            yield original + [""] * 8 + [str(ex)]
             try:
                 line = next(input)
             except StopIteration:
@@ -384,7 +406,8 @@ def launch_gui() -> None:
                 output_text.insert('end', '\n')
 
     def browse_infile() -> None:
-        if (newpath := tk.filedialog.askopenfilename()):
+        newpath: Optional[str] = tkfiledialog.askopenfilename()
+        if (newpath):
             try:
                 newpath = os.path.relpath(newpath)
             except:
@@ -392,7 +415,8 @@ def launch_gui() -> None:
             infile_var.set(newpath)
 
     def browse_outfile() -> None:
-        if (newpath := tk.filedialog.asksaveasfilename()):
+        newpath: Optional[str] = tkfiledialog.asksaveasfilename()
+        if (newpath):
             try:
                 newpath = os.path.relpath(newpath)
             except:
