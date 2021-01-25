@@ -401,7 +401,7 @@ def launch_gui() -> None:
         """
         filename = infile_var.get()
         if filename and not filename.isspace():
-            with open(filename) as file:
+            with open(filename, errors='replace') as file:
                 for line in file:
                     yield line
         else:
@@ -472,7 +472,7 @@ def launch_gui() -> None:
         filename = infile_var.get()
         input_text.delete('1.0', 'end')
         if filename and not filename.isspace():
-            with open(filename) as file:
+            with open(filename, errors='replace') as file:
                 for line in file:
                     input_text.insert('end', line)
 
