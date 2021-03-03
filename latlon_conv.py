@@ -269,9 +269,14 @@ def validate_coord(coord: Coordinate, direction: str) -> str:
     Otherwise returns an empty string
     """
     if isinstance(coord, float):
-        return ""
+        if not 0 <= coord <= 180:
+            return f"Invalid degrees in {direction}"
+        else:
+            return ""
     else:
-        minutes = coord[2]
+        _, degrees, minutes = coord
+        if not 0 <= degrees <= 180:
+            return f"Invalid degrees in {direction}"
         if isinstance(minutes, float):
             if not 0 <= minutes < 60:
                 return f"Invalid minutes in {direction}"
