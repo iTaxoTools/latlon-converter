@@ -386,6 +386,11 @@ def launch_gui() -> None:
         output_frame, orient=tk.VERTICAL, command=output_text.yview)
     output_text.configure(xscrollcommand=output_xscroll.set,
                           yscrollcommand=output_yscroll.set)
+    output_text.configure(state='disabled')
+    # make sure the widget gets focus when clicked
+    # on, to enable highlighting and copying to the
+    # clipboard.
+    output_text.bind("<1>", lambda _: output_text.focus_set())
     output_lbl.grid(row=0, column=0, sticky='w')
     output_text.grid(row=1, column=0, sticky='nsew')
     output_xscroll.grid(row=2, column=0, sticky='nsew')
@@ -423,9 +428,11 @@ def launch_gui() -> None:
                 for line in lines:
                     print("\t".join(line), file=file)
         else:
+            output_text.configure(state='normal')
             for line in lines:
                 output_text.insert('end', f"{line[5]}\t{line[6]}\t{line[-1]}")
                 output_text.insert('end', '\n')
+            output_text.configure(state='disabled')
 
     def browse_infile() -> None:
         newpath: Optional[str] = tkfiledialog.askopenfilename()
