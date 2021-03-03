@@ -312,6 +312,12 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     while True:
         # format the part of the output with the original information
         line = line.strip()
+        if not line:
+            try:
+                line = next(input)
+            except StopIteration:
+                break
+            continue
         part1, _, part2 = line.partition('\t')
         if not part1 or not part2 or part1.isspace() or part2.isspace():
             original = ["", "", line]
