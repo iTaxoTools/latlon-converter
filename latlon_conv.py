@@ -261,6 +261,36 @@ def parse_coordinates(string: str, lat_first: bool) -> Tuple[Coordinate, Coordin
     else:
         return orient((coord0, coord1))
 
+def validate_coord(coord: Coordinate, direction: str) -> str:
+    """
+    direction is "latitude" or "longitude"
+
+    Returns a message if minutes or seconds are invalid (not in [0, 60))
+    Otherwise returns an empty string
+    """
+    if isinstance(coord, float):
+        if not 0 <= coord <= 180:
+            return f"Invalid degrees in {direction}"
+        else:
+            return ""
+    else:
+        _, degrees, minutes = coord
+        if not 0 <= degrees <= 180:
+            return f"Invalid degrees in {direction}"
+        if isinstance(minutes, float):
+            if not 0 <= minutes < 60:
+                return f"Invalid minutes in {direction}"
+            else:
+                return ""
+        else:
+            whole_minutes, seconds = minutes
+            if not 0 <= whole_minutes < 60:
+                return f"Invalid minutes in {direction}"
+            elif not 0 <= seconds < 60:
+                return f"Invalid seconds in {direction}"
+            else:
+                return ""
+
 
 def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     # by default latitude comes first)
@@ -287,6 +317,12 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
     while True:
         # format the part of the output with the original information
         line = line.strip()
+        if not line:
+            try:
+                line = next(input)
+            except StopIteration:
+                break
+            continue
         part1, _, part2 = line.partition('\t')
         if not part1 or not part2 or part1.isspace() or part2.isspace():
             original = ["", "", line]
@@ -299,6 +335,15 @@ def process_simpl(input: Iterator[str]) -> Iterator[List[str]]:
             lat, lon = parse_coordinates(line, lat_first)
         except ValueError as ex:
             yield original + [""] * 8 + [str(ex)]
+            try:
+                line = next(input)
+            except StopIteration:
+                break
+            continue
+        # validate bounds on minutes and seconds
+        remark = validate_coord(lat, "latitude") + validate_coord(lon, "longitude")
+        if remark:
+            yield original + [""] * 8 + [remark]
             try:
                 line = next(input)
             except StopIteration:
