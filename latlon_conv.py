@@ -421,6 +421,7 @@ def launch_gui() -> None:
         if the output file name is given, the output is written to it,
         otherwise to the output text widget
         """
+        output_text.configure(state='normal')
         filename = outfile_var.get()
         output_text.delete('1.0', 'end')
         if filename and not filename.isspace():
@@ -428,11 +429,10 @@ def launch_gui() -> None:
                 for line in lines:
                     print("\t".join(line), file=file)
         else:
-            output_text.configure(state='normal')
             for line in lines:
                 output_text.insert('end', f"{line[5]}\t{line[6]}\t{line[-1]}")
                 output_text.insert('end', '\n')
-            output_text.configure(state='disabled')
+        output_text.configure(state='disabled')
 
     def browse_infile() -> None:
         newpath: Optional[str] = tkfiledialog.askopenfilename()
