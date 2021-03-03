@@ -362,7 +362,7 @@ def launch_gui() -> None:
     input_frame = ttk.Frame(mainframe)
     input_frame.rowconfigure(1, weight=1)
     input_frame.columnconfigure(0, weight=1)
-    input_text = tk.Text(input_frame, width=50, height=15)
+    input_text = tk.Text(input_frame, width=50, height=15, undo=True)
     input_lbl = ttk.Label(input_frame, text="Paste coordinates here for fast conversion into decimal format\n(one pair of coordinates per line, in any format)")
     input_xscroll = ttk.Scrollbar(
         input_frame, orient=tk.HORIZONTAL, command=input_text.xview)
